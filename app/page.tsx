@@ -19,19 +19,20 @@ export default function Home() {
 
   if (loading) return <p>Loading...</p>
 
-  if (!user) return <h2>Not Logged In</h2>
-
+  if (!user)
   return (
     <div style={{ padding: "40px" }}>
-      <h2>Welcome {user.email}</h2>
+      <h2>Not Logged In</h2>
       <button
         onClick={async () => {
-          await supabase.auth.signOut()
-          location.reload()
+          await supabase.auth.signInWithOAuth({
+            provider: "google",
+          })
         }}
       >
-        Logout
+        Login With Google
       </button>
     </div>
+  
   )
 }
