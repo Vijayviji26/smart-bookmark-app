@@ -17,22 +17,33 @@ export default function Home() {
     getUser()
   }, [])
 
+  const loginWithGoogle = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+    })
+  }
+
+  const logout = async () => {
+    await supabase.auth.signOut()
+    location.reload()
+  }
+
   if (loading) return <p>Loading...</p>
 
   if (!user)
+    return (
+      <div style={{ padding: "40px" }}>
+        <h2>Login With Google</h2>
+        <button onClick={loginWithGoogle}>
+          Login
+        </button>
+      </div>
+    )
+
   return (
     <div style={{ padding: "40px" }}>
-      <h2>Not Logged In</h2>
-      <button
-        onClick={async () => {
-          await supabase.auth.signInWithOAuth({
-            provider: "google",
-          })
-        }}
-      >
-        Login With Google
-      </button>
+      <h2>Welcome {user.email}</h2>
+      <button onClick={logout}>Logout</button>
     </div>
-  
   )
 }
