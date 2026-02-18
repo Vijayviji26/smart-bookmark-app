@@ -10,76 +10,106 @@ export default function Home() {
   const [url, setUrl] = useState("")
   const [loading, setLoading] = useState(true)
 
+  // 🔹 Get Logged User
   useEffect(() => {
+    const getUser = async () => {
+      const { data } = await supabase.auth.getUser()
+      setUser(data.user)
+      setLoading(false)
+    }
+
     getUser()
   }, [])
 
-  async function getUser() {
-    const { data } = await supabase.auth.getUser()
-    if (data.user) {
-      setUser(data.user)
-      fetchBookmarks(data.user.id)
-    }
-    setLoading(false)
-  }
+  // 🔹 Fetch Bookmarks
+  const fetchBookmarks = async () => {
+    if (!user) return
 
-  async function fetchBookmarks(userId: string) {
     const { data } = await supabase
       .from("bookmarks")
       .select("*")
-      .eq("user_id", userId)
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
 
-    if (data) setBookmarks(data)
+    setBookmarks(data || [])
   }
 
-  async function loginWithGoogle() {
+  // 🔹 Real-time subscription
+  useEffect(() => {
+    if (!user) return
+
+    fetchBookmarks()
+
+    const channel = supabase
+      .channel("realtime-bookmarks")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "bookmarks",
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          fetchBookmarks()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [user])
+
+  // 🔹 Google Login
+  const loginWithGoogle = async () => {
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: "https://smartbookmarkapp-omega.vercel.app"
-      }
+        redirectTo: "https://smartbookmarkapp-omega.vercel.app",
+      },
     })
   }
 
-  async function logout() {
+  // 🔹 Logout
+  const logout = async () => {
     await supabase.auth.signOut()
     location.reload()
   }
 
-  async function addBookmark() {
+  // 🔹 Add Bookmark
+  const addBookmark = async () => {
     if (!title || !url) return
 
     await supabase.from("bookmarks").insert([
       {
         title,
         url,
-        user_id: user.id
-      }
+        user_id: user.id,
+      },
     ])
 
     setTitle("")
     setUrl("")
-    fetchBookmarks(user.id)
   }
 
-  async function deleteBookmark(id: string) {
+  // 🔹 Delete Bookmark
+  const deleteBookmark = async (id: string) => {
     await supabase.from("bookmarks").delete().eq("id", id)
-    fetchBookmarks(user.id)
   }
 
   if (loading) return <p>Loading...</p>
 
-  if (!user) {
+  // 🔹 Not Logged In
+  if (!user)
     return (
       <div style={{ padding: "40px" }}>
         <h2>Login With Google</h2>
-        <button onClick={loginWithGoogle}>
-          Login
-        </button>
+        <button onClick={loginWithGoogle}>Login</button>
       </div>
     )
-  }
 
+  // 🔹 Logged In
   return (
     <div style={{ padding: "40px" }}>
       <h3>Welcome {user.email}</h3>
@@ -103,14 +133,12 @@ export default function Home() {
       <hr />
 
       <h3>Your Bookmarks</h3>
-      {bookmarks.map((bookmark) => (
-        <div key={bookmark.id}>
-          <a href={bookmark.url} target="_blank">
-            {bookmark.title}
+      {bookmarks.map((b) => (
+        <div key={b.id} style={{ marginBottom: "10px" }}>
+          <a href={b.url} target="_blank">
+            {b.title}
           </a>
-          <button onClick={() => deleteBookmark(bookmark.id)}>
-            Delete
-          </button>
+          <button onClick={() => deleteBookmark(b.id)}>Delete</button>
         </div>
       ))}
     </div>
