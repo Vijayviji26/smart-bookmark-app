@@ -1,39 +1,28 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { supabase } from "@/lib/supabase"
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 export default function Home() {
-  const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const checkUser = async () => {
-      const { data } = await supabase.auth.getUser()
-      setUser(data.user)
-      setLoading(false)
-    }
+    const getUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      setUser(data.user);
+      setLoading(false);
+    };
 
-    checkUser()
-  }, [])
+    getUser();
+  }, []);
 
-  if (loading) return <p>Loading...</p>
+  if (loading) {
+    return <h2>Loading...</h2>;
+  }
 
   if (!user) {
-    return (
-      <div>
-        <h1>Smart Bookmark App</h1>
-        <button
-          onClick={() =>
-            supabase.auth.signInWithOAuth({
-              provider: "google",
-            })
-          }
-        >
-          Login with Google
-        </button>
-      </div>
-    )
+    return <h2>Please login first</h2>;
   }
 
   return (
@@ -43,5 +32,5 @@ export default function Home() {
         Logout
       </button>
     </div>
-  )
+  );
 }
