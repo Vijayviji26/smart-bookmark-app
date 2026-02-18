@@ -1,42 +1,35 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { supabase } from "@/supabase"
+import { createClient } from "@supabase/supabase-js"
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
 export default function Home() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const getUser = async () => {
-      const { data } = await supabase.auth.getUser()
-      setUser(data.user)
+    const getSession = async () => {
+      const { data } = await supabase.auth.getSession()
+      setUser(data.session?.user ?? null)
       setLoading(false)
     }
 
-    getUser()
+    getSession()
   }, [])
 
-  if (loading) {
-    return <div style={{ padding: "40px" }}>Checking session...</div>
-  }
+  if (loading) return <h2>Loading...</h2>
 
-  if (!user) {
+  if (!user)
     return (
       <div style={{ padding: "40px" }}>
-        <h1>Smart Bookmark App</h1>
-        <button
-          onClick={async () => {
-            await supabase.auth.signInWithOAuth({
-              provider: "google",
-            })
-          }}
-        >
-          Login with Google
-        </button>
+        <h2>Not Logged In</h2>
       </div>
     )
-  }
 
   return (
     <div style={{ padding: "40px" }}>
