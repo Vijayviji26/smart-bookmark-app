@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "../supabase"
 
 export default function Home() {
   const [user, setUser] = useState<any>(null)
@@ -9,7 +9,9 @@ export default function Home() {
   const [title, setTitle] = useState("")
   const [url, setUrl] = useState("")
 
-  // 🔹 Get logged in user
+  // -------------------------
+  // 🔐 Get Logged-in User
+  // -------------------------
   useEffect(() => {
     const getUser = async () => {
       const { data } = await supabase.auth.getUser()
@@ -17,27 +19,43 @@ export default function Home() {
     }
 
     getUser()
+
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user ?? null)
+      }
+    )
+
+    return () => {
+      listener.subscription.unsubscribe()
+    }
   }, [])
 
-  // 🔹 Fetch bookmarks
-  const fetchBookmarks = async (userId: string) => {
+  // -------------------------
+  // 📥 Fetch Bookmarks
+  // -------------------------
+  const fetchBookmarks = async () => {
+    if (!user) return
+
     const { data } = await supabase
       .from("bookmarks")
       .select("*")
-      .eq("user_id", userId)
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false })
 
     setBookmarks(data || [])
   }
 
-  // 🔹 Realtime subscription
+  // -------------------------
+  // 🔄 Real-time subscription
+  // -------------------------
   useEffect(() => {
     if (!user) return
 
-    fetchBookmarks(user.id)
+    fetchBookmarks()
 
     const channel = supabase
-      .channel("realtime-bookmarks")
+      .channel("bookmarks-changes")
       .on(
         "postgres_changes",
         {
@@ -47,7 +65,7 @@ export default function Home() {
           filter: `user_id=eq.${user.id}`,
         },
         () => {
-          fetchBookmarks(user.id)
+          fetchBookmarks()
         }
       )
       .subscribe()
@@ -57,7 +75,9 @@ export default function Home() {
     }
   }, [user])
 
-  // 🔹 Add bookmark
+  // -------------------------
+  // ➕ Add Bookmark
+  // -------------------------
   const addBookmark = async () => {
     if (!title || !url) return
 
@@ -73,40 +93,46 @@ export default function Home() {
     setUrl("")
   }
 
-  // 🔹 Delete bookmark
+  // -------------------------
+  // ❌ Delete Bookmark
+  // -------------------------
   const deleteBookmark = async (id: string) => {
     await supabase.from("bookmarks").delete().eq("id", id)
   }
 
-  // 🔹 Login
-  const login = async () => {
+  // -------------------------
+  // 🔐 Login with Google
+  // -------------------------
+  const loginWithGoogle = async () => {
     await supabase.auth.signInWithOAuth({
       provider: "google",
     })
   }
 
-  // 🔹 Logout
   const logout = async () => {
     await supabase.auth.signOut()
-    setUser(null)
   }
 
+  // -------------------------
+  // 🖥️ UI
+  // -------------------------
   if (!user) {
     return (
       <div style={{ padding: 20 }}>
-        <button onClick={login}>Login with Google</button>
+        <h2>Smart Bookmark App</h2>
+        <button onClick={loginWithGoogle}>Login with Google</button>
       </div>
     )
   }
 
   return (
     <div style={{ padding: 20 }}>
-      <h3>Welcome {user.email}</h3>
+      <p>Welcome {user.email}</p>
       <button onClick={logout}>Logout</button>
 
       <hr />
 
-      <h4>Add Bookmark</h4>
+      <h3>Add Bookmark</h3>
       <input
         placeholder="Title"
         value={title}
@@ -121,10 +147,12 @@ export default function Home() {
 
       <hr />
 
-      <h4>Your Bookmarks</h4>
+      <h3>Your Bookmarks</h3>
       {bookmarks.map((b) => (
         <div key={b.id}>
-          {b.title}{" "}
+          <a href={b.url} target="_blank">
+            {b.title}
+          </a>
           <button onClick={() => deleteBookmark(b.id)}>Delete</button>
         </div>
       ))}
