@@ -18,10 +18,11 @@ export default function Home() {
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const [category, setCategory] = useState("General");
+  const [search, setSearch] = useState("");
 
-  // ===============================
+  // ==============================
   // GET USER
-  // ===============================
+  // ==============================
   useEffect(() => {
     const getUser = async () => {
       const { data } = await supabase.auth.getUser();
@@ -30,9 +31,9 @@ export default function Home() {
     getUser();
   }, []);
 
-  // ===============================
+  // ==============================
   // FETCH BOOKMARKS
-  // ===============================
+  // ==============================
   const fetchBookmarks = async () => {
     const { data } = await supabase
       .from("bookmarks")
@@ -46,9 +47,9 @@ export default function Home() {
     if (user) fetchBookmarks();
   }, [user]);
 
-  // ===============================
-  // REALTIME
-  // ===============================
+  // ==============================
+  // REALTIME SUBSCRIPTION
+  // ==============================
   useEffect(() => {
     if (!user) return;
 
@@ -68,9 +69,9 @@ export default function Home() {
     };
   }, [user]);
 
-  // ===============================
+  // ==============================
   // ADD BOOKMARK
-  // ===============================
+  // ==============================
   const addBookmark = async () => {
     if (!title || !url) return;
 
@@ -88,33 +89,40 @@ export default function Home() {
     setCategory("General");
   };
 
-  // ===============================
+  // ==============================
   // DELETE BOOKMARK
-  // ===============================
+  // ==============================
   const deleteBookmark = async (id: string) => {
     await supabase.from("bookmarks").delete().eq("id", id);
   };
 
-  // ===============================
+  // ==============================
   // LOGIN
-  // ===============================
+  // ==============================
   const login = async () => {
     await supabase.auth.signInWithOAuth({
       provider: "google",
     });
   };
 
-  // ===============================
+  // ==============================
   // LOGOUT
-  // ===============================
+  // ==============================
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
   };
 
-  // ===============================
+  // ==============================
+  // FILTERED BOOKMARKS (SEARCH)
+  // ==============================
+  const filteredBookmarks = bookmarks.filter((bookmark) =>
+    bookmark.title.toLowerCase().includes(search.toLowerCase())
+  );
+
+  // ==============================
   // UI
-  // ===============================
+  // ==============================
   if (!user) {
     return (
       <div style={{ padding: 20 }}>
@@ -125,7 +133,7 @@ export default function Home() {
   }
 
   return (
-    <div style={{ padding: 20 }}>
+    <div style={{ padding: 20, maxWidth: 600 }}>
       <h3>Welcome {user.email}</h3>
       <button onClick={logout}>Logout</button>
 
@@ -137,17 +145,20 @@ export default function Home() {
         placeholder="Title"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
+        style={{ display: "block", marginBottom: 5 }}
       />
 
       <input
         placeholder="URL"
         value={url}
         onChange={(e) => setUrl(e.target.value)}
+        style={{ display: "block", marginBottom: 5 }}
       />
 
       <select
         value={category}
         onChange={(e) => setCategory(e.target.value)}
+        style={{ display: "block", marginBottom: 5 }}
       >
         <option value="General">General</option>
         <option value="Tech">Tech</option>
@@ -162,14 +173,34 @@ export default function Home() {
 
       <h3>Your Bookmarks</h3>
 
-      {bookmarks.map((bookmark) => (
-        <div key={bookmark.id} style={{ marginBottom: 10 }}>
-          <strong>{bookmark.title}</strong> <br />
+      {/* SEARCH INPUT */}
+      <input
+        placeholder="Search bookmarks..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        style={{ marginBottom: 15 }}
+      />
+
+      {filteredBookmarks.length === 0 && <p>No bookmarks found.</p>}
+
+      {filteredBookmarks.map((bookmark) => (
+        <div
+          key={bookmark.id}
+          style={{
+            marginBottom: 15,
+            padding: 10,
+            border: "1px solid #ccc",
+          }}
+        >
+          <strong>{bookmark.title}</strong>
+          <br />
           <a href={bookmark.url} target="_blank">
             {bookmark.url}
           </a>
           <br />
-          <small>Category: {bookmark.category}</small>
+          <small>
+            Category: {bookmark.category || "General"}
+          </small>
           <br />
           <button onClick={() => deleteBookmark(bookmark.id)}>
             Delete
