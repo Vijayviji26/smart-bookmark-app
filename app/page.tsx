@@ -19,10 +19,9 @@ export default function Home() {
   const [url, setUrl] = useState("");
   const [category, setCategory] = useState("General");
   const [search, setSearch] = useState("");
+  const [activeCategory, setActiveCategory] = useState("All");
 
-  // ===============================
-  // GET USER
-  // ===============================
+  // ================= USER =================
   useEffect(() => {
     const getUser = async () => {
       const { data } = await supabase.auth.getUser();
@@ -31,9 +30,7 @@ export default function Home() {
     getUser();
   }, []);
 
-  // ===============================
-  // FETCH BOOKMARKS
-  // ===============================
+  // ================= FETCH =================
   const fetchBookmarks = async () => {
     const { data } = await supabase
       .from("bookmarks")
@@ -47,20 +44,16 @@ export default function Home() {
     if (user) fetchBookmarks();
   }, [user]);
 
-  // ===============================
-  // REALTIME
-  // ===============================
+  // ================= REALTIME =================
   useEffect(() => {
     if (!user) return;
 
     const channel = supabase
-      .channel("bookmarks-channel")
+      .channel("realtime-bookmarks")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "bookmarks" },
-        () => {
-          fetchBookmarks();
-        }
+        () => fetchBookmarks()
       )
       .subscribe();
 
@@ -69,19 +62,12 @@ export default function Home() {
     };
   }, [user]);
 
-  // ===============================
-  // ADD BOOKMARK
-  // ===============================
+  // ================= ADD =================
   const addBookmark = async () => {
     if (!title || !url) return;
 
     await supabase.from("bookmarks").insert([
-      {
-        title,
-        url,
-        category,
-        user_id: user.id,
-      },
+      { title, url, category, user_id: user.id },
     ]);
 
     setTitle("");
@@ -89,40 +75,42 @@ export default function Home() {
     setCategory("General");
   };
 
-  // ===============================
-  // DELETE BOOKMARK
-  // ===============================
+  // ================= DELETE =================
   const deleteBookmark = async (id: string) => {
     await supabase.from("bookmarks").delete().eq("id", id);
   };
 
-  // ===============================
-  // LOGIN
-  // ===============================
+  // ================= LOGIN / LOGOUT =================
   const login = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-    });
+    await supabase.auth.signInWithOAuth({ provider: "google" });
   };
 
-  // ===============================
-  // LOGOUT
-  // ===============================
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
   };
 
-  // ===============================
-  // SEARCH FILTER
-  // ===============================
-  const filteredBookmarks = bookmarks.filter((bookmark) =>
-    bookmark.title.toLowerCase().includes(search.toLowerCase())
-  );
+  // ================= FILTER LOGIC =================
+  const filteredBookmarks = bookmarks
+    .filter((b) =>
+      b.title.toLowerCase().includes(search.toLowerCase())
+    )
+    .filter((b) =>
+      activeCategory === "All"
+        ? true
+        : b.category === activeCategory
+    );
 
-  // ===============================
-  // UI
-  // ===============================
+  const categories = [
+    "All",
+    "General",
+    "Tech",
+    "Learning",
+    "Work",
+    "Entertainment",
+  ];
+
+  // ================= UI =================
   if (!user) {
     return (
       <div
@@ -157,10 +145,10 @@ export default function Home() {
   return (
     <div
       style={{
-        maxWidth: 600,
+        maxWidth: 700,
         margin: "40px auto",
         padding: 20,
-        fontFamily: "Arial, sans-serif",
+        fontFamily: "Arial",
       }}
     >
       <h2>Smart Bookmark App</h2>
@@ -180,7 +168,7 @@ export default function Home() {
         Logout
       </button>
 
-      {/* ADD BOOKMARK CARD */}
+      {/* ADD CARD */}
       <div
         style={{
           border: "1px solid #ddd",
@@ -225,22 +213,46 @@ export default function Home() {
             background: "#1677ff",
             color: "white",
             border: "none",
-            cursor: "pointer",
           }}
         >
           Add Bookmark
         </button>
       </div>
 
-      {/* SEARCH */}
-      <h3>Your Bookmarks</h3>
+      {/* STATS */}
+      <h3>Your Bookmarks ({filteredBookmarks.length})</h3>
 
+      {/* SEARCH */}
       <input
-        placeholder="Search bookmarks..."
+        placeholder="Search..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        style={{ width: "100%", marginBottom: 15, padding: 6 }}
+        style={{ width: "100%", marginBottom: 10, padding: 6 }}
       />
+
+      {/* CATEGORY FILTER BUTTONS */}
+      <div style={{ marginBottom: 15 }}>
+        {categories.map((cat) => (
+          <button
+            key={cat}
+            onClick={() => setActiveCategory(cat)}
+            style={{
+              marginRight: 6,
+              marginBottom: 6,
+              padding: "5px 10px",
+              border:
+                activeCategory === cat
+                  ? "2px solid #1677ff"
+                  : "1px solid #ccc",
+              background:
+                activeCategory === cat ? "#e6f4ff" : "white",
+              cursor: "pointer",
+            }}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
 
       {filteredBookmarks.length === 0 && <p>No bookmarks found.</p>}
 
@@ -261,7 +273,7 @@ export default function Home() {
           </a>
           <br />
           <small style={{ color: "gray" }}>
-            Category: {bookmark.category || "General"}
+            Category: {bookmark.category}
           </small>
           <br />
           <button
