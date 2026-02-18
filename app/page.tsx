@@ -1,35 +1,25 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { createClient } from "@supabase/supabase-js"
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+import { supabase } from "../supabase"
 
 export default function Home() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const getSession = async () => {
-      const { data } = await supabase.auth.getSession()
-      setUser(data.session?.user ?? null)
+    const getUser = async () => {
+      const { data } = await supabase.auth.getUser()
+      setUser(data.user)
       setLoading(false)
     }
 
-    getSession()
+    getUser()
   }, [])
 
-  if (loading) return <h2>Loading...</h2>
+  if (loading) return <p>Loading...</p>
 
-  if (!user)
-    return (
-      <div style={{ padding: "40px" }}>
-        <h2>Not Logged In</h2>
-      </div>
-    )
+  if (!user) return <h2>Not Logged In</h2>
 
   return (
     <div style={{ padding: "40px" }}>
