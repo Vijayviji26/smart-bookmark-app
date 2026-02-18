@@ -19,9 +19,10 @@ export default function Home() {
 
   const loginWithGoogle = async () => {
     await supabase.auth.signInWithOAuth({
-  provider: "google",
-  options: {
-    redirectTo: "https://smartbookmarkapp-omega.vercel.app"
+      provider: "google",
+      options: {
+        redirectTo: 
+    "https://smartbookmarkapp-omega.vercel.app"
   }
 })
   }
