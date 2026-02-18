@@ -1,7 +1,54 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import { supabase } from "@/supabase"
+
 export default function Home() {
+  const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data } = await supabase.auth.getUser()
+      setUser(data.user)
+      setLoading(false)
+    }
+
+    getUser()
+  }, [])
+
+  if (loading) {
+    return <div style={{ padding: "40px" }}>Checking session...</div>
+  }
+
+  if (!user) {
+    return (
+      <div style={{ padding: "40px" }}>
+        <h1>Smart Bookmark App</h1>
+        <button
+          onClick={async () => {
+            await supabase.auth.signInWithOAuth({
+              provider: "google",
+            })
+          }}
+        >
+          Login with Google
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div style={{ padding: "40px" }}>
-      <h1>Deployment Working ✅</h1>
+      <h2>Welcome {user.email}</h2>
+      <button
+        onClick={async () => {
+          await supabase.auth.signOut()
+          location.reload()
+        }}
+      >
+        Logout
+      </button>
     </div>
   )
 }
